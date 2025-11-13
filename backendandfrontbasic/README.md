@@ -210,5 +210,3 @@ npm run dev
 
 ===========================================================
 FIN DU MANUEL
-
-Si tu veux une version PDF ou une version adaptée pour Notion, je peux te la générer.
