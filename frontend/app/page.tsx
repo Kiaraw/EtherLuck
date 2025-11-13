@@ -1,101 +1,98 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import Link from "next/link";
+import { useState } from "react";
+import { motion } from "framer-motion";
+
+export default function HomePage() {
+  const [participants] = useState(128);
+  const [jackpot] = useState(1250);
+  const [ticketsLeft] = useState(872);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="min-h-screen bg-[#292C36] text-[#C0C9DB] flex flex-col items-center">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* HERO */}
+      <motion.section
+        className="w-full max-w-4xl text-center px-6 pt-24 pb-14"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7 }}
+      >
+        <h1 className="text-5xl md:text-6xl font-extrabold text-[#F0DC92] mb-6 uppercase tracking-wide">
+          EtherLuck
+        </h1>
+
+        <p className="text-lg text-[#F0DC92] mb-4">
+          Il reste <span className="font-bold text-[#D2A941]">{ticketsLeft}</span> tickets avant le tirage.
+        </p>
+
+        <Link
+          href="/participation"
+          className="inline-block px-10 py-4 rounded-xl font-semibold text-lg transition transform hover:scale-105 active:scale-95"
+          style={{ background: "#D2A941", color: "#292C36" }}
+        >
+          Participer maintenant
+        </Link>
+      </motion.section>
+
+      {/* CARDS */}
+      <motion.section
+        className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-8 px-6 py-12"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.7 }}
+      >
+        {[
+          { label: "Participants", value: participants },
+          { label: "Tickets restants", value: ticketsLeft },
+          { label: "Cagnotte", value: `${jackpot.toLocaleString("fr-FR")} €` },
+        ].map((item, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ y: -5 }}
+            transition={{ type: "spring", stiffness: 180, damping: 14 }}
+            className="rounded-2xl p-6 shadow-lg border border-[#7E52A0]/40"
+            style={{ background: "#391B49" }}
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <p className="text-sm text-[#F0DC92] mb-2">{item.label}</p>
+            <p className="text-3xl font-bold text-[#D2A941]">{item.value}</p>
+          </motion.div>
+        ))}
+      </motion.section>
+
+      {/* COMMENT ÇA MARCHE */}
+      <motion.section
+        className="w-full max-w-5xl px-6 pb-20"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.7 }}
+      >
+        <h2 className="text-center text-3xl md:text-4xl font-bold text-[#F0DC92] mb-10 uppercase tracking-wide">
+          Comment ça marche ?
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          {[
+            "Achetez un ticket pour participer à la loterie.",
+            "Chaque ticket augmente la probabilité d’être tiré au sort.",
+            "Quand les tickets sont épuisés, un gagnant unique est choisi.",
+          ].map((text, i) => (
+            <motion.div
+              key={i}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 180, damping: 15 }}
+              className="p-6 rounded-xl border border-[#7E52A0]/40 shadow-md"
+              style={{ background: "#391B49" }}
+            >
+              <h3 className="text-[#D2A941] font-bold mb-3 text-lg">
+                Étape {i + 1}
+              </h3>
+              <p className="text-sm leading-6 text-[#C0C9DB]">{text}</p>
+            </motion.div>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </motion.section>
+    </main>
   );
 }
