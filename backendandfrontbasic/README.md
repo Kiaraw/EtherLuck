@@ -1,57 +1,214 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+MANUEL D’UTILISATION – Projet Lucky Lottery (Back-end + Front-end)
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+===========================================================
+INTRODUCTION
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+Ce guide explique comment lancer entièrement le projet Lucky Lottery :
+– Exécuter le réseau Hardhat local
+– Déployer les deux contrats (Token + Lottery)
+– Configurer MetaMask
+– Lancer le front-end
+– Réaliser les trois transactions d’un utilisateur (connexion, approve, enter)
 
-## Project Overview
+Il est conçu pour être suivi étape par étape, même sans connaissance avancée en blockchain.
 
-This example project includes:
+===========================================================
+	1.	PRÉREQUIS À INSTALLER
+===========================================================
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+	1.	Installer Node.js (version conseillée : 22)
+→ https://nodejs.org/
+	2.	Installer MetaMask (extension navigateur)
+→ https://metamask.io/
+	3.	Installer les dépendances du projet
 
-## Usage
+Terminal 1 : dossier back-end
+cd backendandfrontbasic/luckylottery
+npm install
 
-### Running Tests
+Terminal 2 : dossier front-end
+cd backendandfrontbasic/lottery-frontend
+npm install
 
-To run all the tests in the project, execute the following command:
+===========================================================
+2. LANCER LE RÉSEAU LOCAL HARDHAT
 
-```shell
-npx hardhat test
-```
+Dans un terminal :
 
-You can also selectively run the Solidity or `node:test` tests:
+cd backendandfrontbasic/luckylottery
+npx hardhat node
 
-```shell
-npx hardhat test solidity
-npx hardhat test nodejs
-```
+Cela démarre un réseau local (localhost:8545) avec :
+– 20 comptes générés automatiquement
+– chacun ayant 10000 ETH fictifs
+– leurs clés privées visibles dans la console
 
-### Make a deployment to Sepolia
+NE PAS FERMER CE TERMINAL.
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+===========================================================
+3. DÉPLOYER LES CONTRATS (TOKEN + LOTTERY)
 
-To run the deployment to a local chain:
+Ouvrir un deuxième terminal :
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+cd backendandfrontbasic/luckylottery
+npx hardhat run deploy.cjs –network localhost
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+Ce script :
+– déploie LuckToken
+– déploie Lottery
+– met automatiquement à jour lottery-frontend/src/constants.ts
+(avec TOKEN_ADDRESS, LOTTERY_ADDRESS et l’ABI)
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+À ce stade le front-end peut communiquer avec les contrats.
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+===========================================================
+4. CONFIGURATION DE METAMASK
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
+⸻
 
-After setting the variable, you can run the deployment with the Sepolia network:
+A. Ajouter un nouveau réseau
 
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+Dans MetaMask → Réseaux → Add network manually
+
+Network Name : Hardhat Local
+RPC URL : http://127.0.0.1:8545
+Chain ID : 31337
+Currency Symbol : ETH
+
+Enregistrer.
+
+⸻
+
+B. Importer un compte
+
+Dans le terminal où tourne “npx hardhat node”, repérer :
+
+Account #0: 0xf39F…
+Private Key: 0xabc123…
+
+Dans MetaMask :
+– Account
+– Import Account
+– coller la private key
+
+On peut importer plusieurs comptes pour tester plusieurs joueurs.
+
+===========================================================
+5. AJOUTER LE TOKEN LUCKTOKEN DANS METAMASK
+
+Dans MetaMask → Import Token
+
+Token address = contenu de TOKEN_ADDRESS dans constants.ts
+
+MetaMask détecte :
+Symbol: LCK
+Decimals: 18
+
+Cliquer sur “Add”.
+
+===========================================================
+6. LANCER LE FRONT-END
+
+Dans un terminal :
+
+cd backendandfrontbasic/lottery-frontend
+npm run dev
+
+Ouvrir :
+http://localhost:3000
+
+===========================================================
+7. SCÉNARIO COMPLET : LES 3 ACTIONS UTILISATEUR
+
+⸻
+
+	1.	Connexion du wallet
+
+⸻
+
+Cliquer sur le bouton :
+
+Connect Wallet
+
+MetaMask propose la connexion → valider.
+
+⸻
+
+	2.	Autoriser la loterie à dépenser les tokens (APPROVE)
+
+⸻
+
+Cliquer sur :
+
+💰 Autoriser la loterie
+
+Cette action :
+– appelle LuckToken.approve(lotteryAddress, ticketPrice)
+– ouvre MetaMask
+– l’utilisateur signe l’autorisation
+
+Une alerte confirme le succès.
+
+⸻
+
+	3.	Entrer dans la loterie (ENTER)
+
+⸻
+
+Cliquer sur :
+
+🎟️ Participer à la loterie
+
+Cette action :
+– appelle Lottery.enter()
+– consomme 1 ticket (1 token)
+– ajoute le joueur dans players[]
+– augmente la round si un winner est tiré
+
+===========================================================
+8. TESTER AVEC PLUSIEURS COMPTES
+
+Pour simuler plusieurs joueurs :
+	1.	Importer un autre compte Hardhat dans MetaMask
+	2.	Changer de compte dans MetaMask
+	3.	Recharger le front
+	4.	Faire approve + enter
+
+===========================================================
+9. COMMANDES UTILES POUR VÉRIFIER LE BACK-END
+
+Dans un terminal :
+
+npx hardhat console –network localhost
+
+Exemples :
+
+Voir les joueurs :
+(await lottery.players(0))
+(await lottery.players(1))
+
+Voir round :
+(await lottery.round()).toString()
+
+Voir solde tokens d’un joueur :
+(await token.balanceOf(“0xAdresse”)).toString()
+
+Voir prix du ticket :
+(await lottery.ticketPrice()).toString()
+
+===========================================================
+10. RÉSUMÉ DES COMMANDES IMPORTANTES
+
+Lancer le réseau :
+npx hardhat node
+
+Déployer les contrats :
+npx hardhat run deploy.cjs –network localhost
+
+Lancer le front :
+npm run dev
+
+===========================================================
+FIN DU MANUEL
+
+Si tu veux une version PDF ou une version adaptée pour Notion, je peux te la générer.
