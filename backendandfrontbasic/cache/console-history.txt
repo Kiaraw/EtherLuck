@@ -1,0 +1,26 @@
+(await token.balanceOf(owner.address)).toString()
+(await lottery.players(2))
+(await lottery.players(1))
+(await lottery.players(0))
+(await lottery.round()).toString()
+(await token.balanceOf(owner.address)).toString()
+owner.address
+const [owner] = await ethers.getSigners();
+(await token.balanceOf(address)).toString()
+await token.totalSupply()
+await lottery.players(0)
+await lottery.enter()
+await token.approve(lotteryAddress, ethers.utils.parseEther("1"))
+await lottery.ticketPrice()
+await token.balanceOf("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+await lottery.round()
+await lottery.players(0)
+lotteryAddress
+const token = await Token.attach(tokenAddress);
+const Token = await ethers.getContractFactory("LuckToken");
+const lottery = await Lottery.attach(lotteryAddress);
+const Lottery = await ethers.getContractFactory("Lottery");
+const tokenAddress = "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1";
+const lotteryAddress = "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE";
+await ethers.provider.getCode("0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE")
+nvm use 22
