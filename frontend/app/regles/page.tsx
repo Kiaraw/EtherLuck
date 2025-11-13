@@ -24,10 +24,7 @@ export default function CGUReglement() {
           className="w-64 p-6 flex flex-col gap-4 border-r"
           style={{ borderColor: "#8e99ac", backgroundColor: "#292C36" }}
         >
-          <h1
-            className="text-xl font-bold mb-4"
-            style={{ color: "#7e52a0" }}
-          >
+          <h1 className="text-xl font-bold mb-4" style={{ color: "#7e52a0" }}>
             EtherLuck
           </h1>
 
@@ -67,11 +64,14 @@ export default function CGUReglement() {
 
           {activeTab === "reglement" && (
             <section>
-              <h2 className="text-2xl font-semibold mb-4" style={{ color: "#7e52a0" }}>
+              <h2
+                className="text-2xl font-semibold mb-4"
+                style={{ color: "#7e52a0" }}
+              >
                 Règlement Officiel du Tirage
               </h2>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 1. Objet du règlement
               </h3>
               <p>
@@ -81,7 +81,7 @@ export default function CGUReglement() {
                 fondé sur la blockchain.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 2. Nature du tirage
               </h3>
               <p>
@@ -89,7 +89,7 @@ export default function CGUReglement() {
                 publique. Il est entièrement automatisé, transparent et vérifiable publiquement.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 3. Conditions de participation
               </h3>
               <ul className="list-disc list-inside">
@@ -99,7 +99,7 @@ export default function CGUReglement() {
                 <li>L’acceptation des présentes règles et des CGU est obligatoire.</li>
               </ul>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 4. Modalités du tirage
               </h3>
               <ul className="list-disc list-inside">
@@ -109,7 +109,7 @@ export default function CGUReglement() {
                 <li>Résultats publiés sous 10 minutes.</li>
               </ul>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 5. Attribution des gains
               </h3>
               <ul className="list-disc list-inside">
@@ -119,7 +119,7 @@ export default function CGUReglement() {
                 <li>Aucun échange en argent liquide.</li>
               </ul>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 6. Validité et contrôle
               </h3>
               <p>
@@ -127,19 +127,19 @@ export default function CGUReglement() {
                 annuler le tirage.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 7. Fiscalité et obligations légales
               </h3>
               <p>Les gains n’ont pas de valeur monétaire officielle et ne sont pas soumis à imposition.</p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 8. Responsabilité
               </h3>
               <p>
                 La Mairie décline toute responsabilité en cas de perte de clé privée, erreur de wallet ou panne du réseau.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 9. Réclamations
               </h3>
               <p>
@@ -149,7 +149,7 @@ export default function CGUReglement() {
                 1 rue de la Poste, 97000 Etherbay
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 10. Acceptation du règlement
               </h3>
               <p>
@@ -161,11 +161,14 @@ export default function CGUReglement() {
 
           {activeTab === "cgu" && (
             <section>
-              <h2 className="text-2xl font-semibold mb-4" style={{ color: "#7e52a0" }}>
+              <h2
+                className="text-2xl font-semibold mb-4"
+                style={{ color: "#7e52a0" }}
+              >
                 Conditions Générales d’Utilisation (CGU)
               </h2>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 1. Objet
               </h3>
               <p>
@@ -173,7 +176,7 @@ export default function CGUReglement() {
                 de loterie numérique gérée par la Mairie de Etherbay.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 2. Accès et conditions d’inscription
               </h3>
               <ul className="list-disc list-inside">
@@ -182,7 +185,7 @@ export default function CGUReglement() {
                 <li>Participation payante via un ticket en cryptomonnaie locale.</li>
               </ul>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 3. Fonctionnement de la loterie
               </h3>
               <ul className="list-disc list-inside">
@@ -192,7 +195,7 @@ export default function CGUReglement() {
                 <li>Pas d’argent liquide ou de carte bancaire.</li>
               </ul>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 4. Nature expérimentale du service
               </h3>
               <p>
@@ -200,7 +203,7 @@ export default function CGUReglement() {
                 Aide en cas de dépendance : 09 74 75 13 13 (appel non surtaxé).
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 5. Responsabilité
               </h3>
               <p>
@@ -208,7 +211,7 @@ export default function CGUReglement() {
                 interruptions du service.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 6. Protection des données personnelles (RGPD)
               </h3>
               <p>
@@ -216,14 +219,14 @@ export default function CGUReglement() {
                 auprès du DPO de la Mairie.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 7. Propriété intellectuelle
               </h3>
               <p>
                 L’ensemble des contenus (nom, logo, smart contract, interface) reste la propriété de la Mairie d’Etherbay.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 8. Modification des CGU
               </h3>
               <p>
@@ -231,12 +234,12 @@ export default function CGUReglement() {
                 majeure.
               </p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 9. Loi applicable et juridiction
               </h3>
               <p>Droit français. Litiges soumis aux tribunaux administratifs compétents de Etherbay.</p>
 
-              <h3 className="font-semibold mt-6" style={{ color: "#7e52a0" }}>
+              <h3 className="font-semibold mt-6" style={{ color: "#d2a941" }}>
                 10. Contact
               </h3>
               <p>
