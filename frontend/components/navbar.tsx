@@ -10,13 +10,13 @@ export default function Navbar() {
         <Link href="/" className="flex items-center space-x-3">
           <Image
             src="/logo.png"
-            alt="Logo BlockLucky"
+            alt="Logo EtherLucky"
             width={40}
             height={40}
             className="rounded-full"
           />
           <span className="text-2xl font-bold text-[#d2a941] hover:text-[#f0dc92] transition">
-            BlockLucky
+            EtherLuck
           </span>
         </Link>
 
@@ -30,8 +30,8 @@ export default function Navbar() {
           <Link href="/cagnotte" className="hover:text-[#d2a941] transition">
             Cagnotte
           </Link>
-          <Link href="/apropos" className="hover:text-[#d2a941] transition">
-            À propos
+          <Link href="/regles" className="hover:text-[#d2a941] transition">
+            Règlementation
           </Link>
         </div>
       </div>
