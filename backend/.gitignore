@@ -1,50 +1,54 @@
-# Remix compiler artifacts
-**/artifacts/
-**/artifacts/**
+# Node.js dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# Remix plugin state folders
-deps/
-states/
+# Hardhat build artifacts
+artifacts/
+cache/
+cache_* 
+typechain/
+typechain-types/
 
-# Debug info
-*.dbg.json
-*.tsbuildinfo
+# Compiled contracts
+*.abi
+*.bin
 
-# Optional
+# Local Hardhat network data
+deployments/
 .env
 .env.local
+.env.*.local
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
+# OS files
+.DS_Store
+Thumbs.db
 
-# vercel
-.vercel
+# IDE / Editor
+.vscode/
+.idea/
+*.sw?
+*.sublime-workspace
+*.sublime-project
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Coverage and test outputs
+coverage/
+coverage.json
+test-results/
+junit.xml
+
+# Temporary or generated files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Hardhat node data directory (if using localhost node)
+hardhat-node/
