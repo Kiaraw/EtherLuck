@@ -5,111 +5,131 @@ import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+import {
+  LOTTERY_ADDRESS,
+  LOTTERY_ABI,
+  TOKEN_ADDRESS,
+  TOKEN_ABI,
+} from "@/src/constants";
+
 export default function Participation() {
   const [account, setAccount] = useState("");
   const [tickets, setTickets] = useState(1);
-  const [pricePerTicket, setPricePerTicket] = useState(1); // 1 ELK par ticket
-  const [remainingTickets, setRemainingTickets] = useState(100);
+  const [pricePerTicket, setPricePerTicket] = useState(1);
   const [transactionStatus, setTransactionStatus] = useState("");
-  const [elkBalance, setElkBalance] = useState(100); // solde fictif
+  const [confirmBeforeTx, setConfirmBeforeTx] = useState(false);
+
+  const [contract, setContract] = useState<any>(null);
+  const [token, setToken] = useState<any>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("elk_balance");
-    if (saved) setElkBalance(Number(saved));
+    initBlockchain();
   }, []);
 
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        setAccount(accounts[0]);
-        const saved = localStorage.getItem("elk_balance");
-        if (!saved) localStorage.setItem("elk_balance", String(elkBalance));
-      } catch (err) {
-        console.error("Erreur connexion wallet:", err);
+  const initBlockchain = async () => {
+    try {
+      console.log("INIT Participation…");
+
+      // Provider Hardhat
+      const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+
+      console.log("STEP: Checking contract code");
+      const code = await provider.getCode(LOTTERY_ADDRESS);
+      console.log("Code:", code);
+
+      if (code === "0x") {
+        console.error("❌ CONTRAT INEXISTANT À CETTE ADRESSE");
+        return;
       }
-    } else {
-      alert("MetaMask non détecté");
+
+      // Lecture en READ-ONLY
+      const contractRead = new ethers.Contract(
+        LOTTERY_ADDRESS,
+        LOTTERY_ABI,
+        provider
+      );
+
+      const priceWei = await contractRead.ticketPrice();
+      const price = Number(ethers.formatEther(priceWei));
+      setPricePerTicket(price);
+
+      // Préparation signer
+      if (window.ethereum) {
+        const browserProvider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await browserProvider.getSigner();
+        setAccount(await signer.getAddress());
+
+        setContract(
+          new ethers.Contract(LOTTERY_ADDRESS, LOTTERY_ABI, signer)
+        );
+
+        setToken(
+          new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer)
+        );
+      }
+    } catch (e) {
+      console.error("INIT ERROR:", e);
     }
   };
 
-  const buyTickets = async () => {
-    const totalCost = pricePerTicket * tickets;
-    if (tickets < 1) {
-      setTransactionStatus("Choisissez au moins 1 ticket.");
-      return;
-    }
-    if (totalCost > elkBalance) {
-      setTransactionStatus("Solde insuffisant en etherluckies (ELK).");
-      return;
-    }
+  const requestConfirmation = () => setConfirmBeforeTx(true);
 
+  const confirmAndBuy = async () => {
     try {
-      setTransactionStatus("Transaction en cours...");
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+      setTransactionStatus("Approbation des tokens…");
 
-      const newBalance = Number((elkBalance - totalCost).toFixed(4));
-      setElkBalance(newBalance);
-      localStorage.setItem("elk_balance", String(newBalance));
-      setRemainingTickets((prev) => Math.max(0, prev - tickets));
-      setTransactionStatus(`Achat confirmé : -${totalCost} ELK. Solde restant : ${newBalance} ELK. Bonne chance 🍀`);
-    } catch (err) {
-      console.error(err);
-      setTransactionStatus("Erreur pendant la transaction.");
+      const priceWei = ethers.parseEther(pricePerTicket.toString());
+      const totalWei = priceWei * BigInt(tickets);
+
+      const tx1 = await token.approve(LOTTERY_ADDRESS, totalWei);
+      await tx1.wait();
+
+      setTransactionStatus("Achat du ticket…");
+
+      const tx2 = await contract.enter();
+      await tx2.wait();
+
+      setTransactionStatus("Achat confirmé !");
+      setConfirmBeforeTx(false);
+    } catch (e) {
+      console.error("BUY ERROR:", e);
+      setTransactionStatus("Erreur ou transaction refusée.");
+      setConfirmBeforeTx(false);
     }
   };
 
   return (
-    <main
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ backgroundColor: "#292C36", color: "#c0c9db" }}
-    >
+    <main className="min-h-screen flex flex-col items-center justify-center p-6"
+      style={{ backgroundColor: "#292C36", color: "#c0c9db" }}>
 
-      <Card
-        className="max-w-lg w-full shadow-2xl rounded-2xl border"
-        style={{ backgroundColor: "#391b49", borderColor: "#8e99ac" }}
-      >
+      <Card className="max-w-lg w-full shadow-2xl rounded-2xl border"
+        style={{ backgroundColor: "#391b49", borderColor: "#8e99ac" }}>
+        
         <CardContent className="p-8 space-y-6">
-          <h1
-            className="text-3xl font-bold text-center mb-6"
-            style={{ color: "#c0c9db" }}
-          >
-            Participer à la loterie EtherLuck
+
+          <h1 className="text-3xl font-bold text-center" style={{ color: "#c0c9db" }}>
+            Participer à EtherLuck
           </h1>
 
-          {!account ? (
-            <Button
-              onClick={connectWallet}
-              className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
-              style={{
-                backgroundColor: "#d2a941",
-                color: "#391b49",
-              }}
-            >
-              Se connecter à MetaMask
-            </Button>
-          ) : (
-            <div
-              className="text-center text-sm py-2 rounded-lg"
-              style={{ color: "#d2a941", backgroundColor: "#3b3e48" }}
-            >
-              Connecté : {account.substring(0, 6)}...{account.substring(account.length - 4)}
+          {account && (
+            <div className="text-center text-sm py-2 rounded-lg"
+              style={{ color: "#d2a941", backgroundColor: "#3b3e48" }}>
+              Connecté : {account.slice(0,6)}...{account.slice(-4)}
             </div>
           )}
 
+          {/* Inputs */}
           <div>
-            <label
-              className="block mb-2 font-medium"
-              style={{ color: "#d2a941" }}
-            >
+            <label className="block mb-2 font-medium" style={{ color: "#d2a941" }}>
               Nombre de tickets
             </label>
+
             <input
               type="number"
               min="1"
               value={tickets}
               onChange={(e) => setTickets(Number(e.target.value))}
-              className="w-full rounded-lg p-2 text-center text-lg font-semibold focus:outline-none"
+              className="w-full rounded-lg p-2 text-center text-lg"
               style={{
                 backgroundColor: "#391b49",
                 color: "#f0dc92",
@@ -118,64 +138,44 @@ export default function Participation() {
             />
           </div>
 
-          <div className="space-y-1 text-center text-sm" style={{ color: "#c0c9db" }}>
-            <p>
-              Prix par ticket :{" "}
-              <span className="font-bold" style={{ color: "#c0c9db" }}>
-                {pricePerTicket} ELK
-              </span>
-            </p>
-            <p>
-              Coût total :{" "}
-              <span className="font-bold" style={{ color: "#c0c9db" }}>
-                {pricePerTicket * tickets} ELK
-              </span>
-            </p>
-            <p>
-              Tickets restants :{" "}
-              <span className="font-bold" style={{ color: "#c0c9db" }}>
-                {remainingTickets}
-              </span>
-            </p>
-            <p>
-              Solde (ELK) :{" "}
-              <span className="font-bold" style={{ color: "#c0c9db" }}>
-                {elkBalance} ELK
-              </span>
-            </p>
-          </div>
+          <p className="text-center">
+            Prix : <b>{pricePerTicket} ELK</b><br/>
+            Total : <b>{tickets * pricePerTicket} ELK</b>
+          </p>
 
-          <Button
-            onClick={buyTickets}
-            disabled={!account}
-            className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
-            style={{
-              backgroundColor: "#7e52a0",
-              color: "white",
-              opacity: !account ? 0.5 : 1,
-            }}
-          >
-            Acheter mes tickets
-          </Button>
+          {!confirmBeforeTx ? (
+            <Button onClick={requestConfirmation}
+              className="w-full py-3 text-lg"
+              style={{ backgroundColor: "#7e52a0", color: "white" }}>
+              Acheter
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg text-sm"
+                style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}>
+                MetaMask va demander 2 confirmations (approve + enter).
+              </div>
 
-          {transactionStatus && (
-            <div
-              className="text-center font-medium mt-4 p-2 rounded-lg"
-              style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}
-            >
-              {transactionStatus}
+              <Button onClick={confirmAndBuy}
+                className="w-full py-3 text-lg"
+                style={{ backgroundColor: "#d2a941", color: "#391b49" }}>
+                Continuer
+              </Button>
+
+              <Button onClick={() => setConfirmBeforeTx(false)}
+                className="w-full py-3 text-lg"
+                style={{ backgroundColor: "#7e52a0", color: "white" }}>
+                Annuler
+              </Button>
             </div>
           )}
 
-          <div className="text-center mt-6">
-            <a
-              href="/"
-              className="font-semibold hover:underline"
-              style={{ color: "#d2a941" }}
-            >
-              ← Retour à l’accueil
-            </a>
-          </div>
+          {transactionStatus && (
+            <div className="text-center mt-4 p-2 rounded-lg"
+              style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}>
+              {transactionStatus}
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
