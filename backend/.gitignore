@@ -1,0 +1,54 @@
+# Node.js dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Hardhat build artifacts
+artifacts/
+cache/
+cache_* 
+typechain/
+typechain-types/
+
+# Compiled contracts
+*.abi
+*.bin
+
+# Local Hardhat network data
+deployments/
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sw?
+*.sublime-workspace
+*.sublime-project
+
+# Coverage and test outputs
+coverage/
+coverage.json
+test-results/
+junit.xml
+
+# Temporary or generated files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Hardhat node data directory (if using localhost node)
+hardhat-node/
