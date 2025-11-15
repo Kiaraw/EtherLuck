@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ethers } from "ethers";
 import { LOTTERY_ADDRESS, LOTTERY_ABI, TOKEN_ADDRESS, TOKEN_ABI } from "@/src/constants";
+import { AgeGate } from "@/components/agesgate";
 
 export default function HomePage() {
   const TOTAL_TICKETS = 100;
@@ -75,6 +76,7 @@ export default function HomePage() {
   };
 
   return (
+    <AgeGate>
     <main className="min-h-screen bg-[#292C36] text-[#C0C9DB] flex flex-col items-center">
 
       {/* HERO */}
@@ -159,5 +161,6 @@ export default function HomePage() {
         </div>
       </motion.section>
     </main>
+    </AgeGate>
   );
 }

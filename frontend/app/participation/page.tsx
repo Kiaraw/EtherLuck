@@ -10,6 +10,7 @@ import {
   TOKEN_ADDRESS,
   TOKEN_ABI,
 } from "@/src/constants";
+import { AgeGate } from "@/components/agesgate";
 
 export default function Participation() {
   const [account, setAccount] = useState("");
@@ -151,6 +152,7 @@ export default function Participation() {
   };
 
   return (
+    <AgeGate>
     <main
       className="min-h-screen flex flex-col items-center justify-center p-6"
       style={{ backgroundColor: "#292C36", color: "#c0c9db" }}
@@ -300,5 +302,6 @@ export default function Participation() {
       )}
 
     </main>
+    </AgeGate>
   );
 }
