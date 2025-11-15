@@ -1,13 +1,78 @@
-'use client';
+"use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { ethers } from "ethers";
+import { LOTTERY_ADDRESS, LOTTERY_ABI, TOKEN_ADDRESS, TOKEN_ABI } from "@/src/constants";
 
 export default function HomePage() {
-  const [participants] = useState(128);
-  const [jackpot] = useState(1250);
-  const [ticketsLeft] = useState(872);
+  const TOTAL_TICKETS = 100;
+
+  const [ticketsSold, setTicketsSold] = useState(0);
+  const [participants, setParticipants] = useState(0);
+  const [ticketsLeft, setTicketsLeft] = useState(TOTAL_TICKETS);
+  const [jackpot, setJackpot] = useState(0);
+
+  useEffect(() => {
+    initHomeData();
+  }, []);
+
+  const initHomeData = async () => {
+    console.log("🏠 INIT Home — Connecting to blockchain…");
+
+    try {
+      const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+
+      // Contrat read-only
+      const contract = new ethers.Contract(
+        LOTTERY_ADDRESS,
+        LOTTERY_ABI,
+        provider
+      );
+
+      const token = new ethers.Contract(
+        TOKEN_ADDRESS,
+        TOKEN_ABI,
+        provider
+      );
+
+      // ---------------------------
+      // 1. Total tickets vendus
+      // ---------------------------
+      const total = await contract.totalTicketsSold();
+      const totalNum = Number(total);
+      console.log("🎫 totalTicketsSold =", totalNum);
+      setTicketsSold(totalNum);
+
+      setTicketsLeft(Math.max(TOTAL_TICKETS - totalNum, 0));
+
+      // ---------------------------
+      // 2. Nombre de participants uniques
+      // via l'événement TicketPurchased
+      // ---------------------------
+      const events = await contract.queryFilter("TicketPurchased");
+      console.log("🧾 Events Home =", events);
+
+      // compter les adresses uniques
+      const uniqueAddresses = new Set(
+        events.map(e => e.args?.buyer?.toLowerCase())
+      );
+      setParticipants(uniqueAddresses.size);
+
+      // ---------------------------
+      // 3. Jackpot = solde du contrat en tokens ELK
+      // ---------------------------
+      const balance = await token.balanceOf(LOTTERY_ADDRESS);
+      const formattedJackpot = Number(ethers.formatEther(balance));
+
+      console.log("💰 Jackpot =", formattedJackpot);
+      setJackpot(formattedJackpot);
+
+    } catch (err) {
+      console.error("❌ HOME ERROR:", err);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#292C36] text-[#C0C9DB] flex flex-col items-center">
@@ -46,7 +111,7 @@ export default function HomePage() {
         {[
           { label: "Participants", value: participants },
           { label: "Tickets restants", value: ticketsLeft },
-          { label: "Cagnotte", value: `${jackpot.toLocaleString("fr-FR")} €` },
+          { label: "Cagnotte", value: `${jackpot} ELK` },
         ].map((item, i) => (
           <motion.div
             key={i}
