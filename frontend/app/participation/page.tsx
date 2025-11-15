@@ -14,87 +14,139 @@ import {
 export default function Participation() {
   const [account, setAccount] = useState("");
   const [tickets, setTickets] = useState(1);
-  const [price, setPrice] = useState(1);
-  const [txStatus, setTxStatus] = useState("");
+  const [pricePerTicket, setPricePerTicket] = useState(1);
+  const [transactionStatus, setTransactionStatus] = useState("");
+  const [confirmBeforeTx, setConfirmBeforeTx] = useState(false);
 
   const [contract, setContract] = useState<any>(null);
   const [token, setToken] = useState<any>(null);
 
+  // Popup gagnant
+  const [winnerPopup, setWinnerPopup] = useState<string | null>(null);
+
   useEffect(() => {
-    init();
+    initBlockchain();
   }, []);
 
-  const init = async () => {
+  const initBlockchain = async () => {
     try {
       console.log("----- INIT Participation -----");
 
-      // Provider Hardhat
       const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 
-      console.log("STEP: Vérification du contrat…");
       const code = await provider.getCode(LOTTERY_ADDRESS);
       if (code === "0x") {
-        console.error("❌ Aucun contrat trouvé à LOTTERY_ADDRESS");
-        return;
+        console.error("❌ Aucun contrat à cette adresse");
       }
 
-      // Contrat lecture
+      // Contrat lecture seule
       const contractRead = new ethers.Contract(
         LOTTERY_ADDRESS,
         LOTTERY_ABI,
         provider
       );
 
-      const rawPrice = await contractRead.ticketPrice();
-      setPrice(Number(ethers.formatEther(rawPrice)));
+      const priceWei = await contractRead.ticketPrice();
+      const formatted = Number(ethers.formatEther(priceWei));
+      setPricePerTicket(formatted);
 
-      // Wallet Metamask
+      // Connexion wallet
       if (window.ethereum) {
-        console.log("STEP: Connexion Metamask…");
+        const browserProvider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await browserProvider.getSigner();
+        const signerAddress = await signer.getAddress();
+        setAccount(signerAddress);
 
-        const browser = new ethers.BrowserProvider(window.ethereum);
-        const signer = await browser.getSigner();
-        const addr = await signer.getAddress();
-
-        setAccount(addr);
-
-        // Contrats écriture
-        setContract(
-          new ethers.Contract(LOTTERY_ADDRESS, LOTTERY_ABI, signer)
+        const contractWrite = new ethers.Contract(
+          LOTTERY_ADDRESS,
+          LOTTERY_ABI,
+          signer
         );
-        setToken(
-          new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer)
+
+        const tokenWrite = new ethers.Contract(
+          TOKEN_ADDRESS,
+          TOKEN_ABI,
+          signer
         );
+
+        setContract(contractWrite);
+        setToken(tokenWrite);
       }
-    } catch (err) {
-      console.error("❌ INIT ERROR:", err);
+    } catch (e) {
+      console.error("❌ INIT ERROR:", e);
     }
   };
 
-  const buy = async () => {
+  const requestConfirmation = () => {
+    setConfirmBeforeTx(true);
+  };
+
+  const confirmAndBuy = async () => {
     try {
-      if (!contract || !token) return;
+      if (!contract || !token) {
+        setTransactionStatus("Erreur: contrat non initialisé.");
+        return;
+      }
 
-      console.log("----- BUY START -----");
-      setTxStatus("Approbation des tokens…");
+      setTransactionStatus("Approbation des tokens (approve)…");
 
-      const totalCostWei = ethers.parseEther((price * tickets).toString());
+      // Calcul du montant total
+      const priceWei = ethers.parseEther(pricePerTicket.toString());
+      const totalWei = priceWei * BigInt(tickets);
+
+      // Lire total avant achat
+      const previousTotal = Number(await contract.totalTicketsSold());
+      const futureTotal = previousTotal + Number(tickets);
 
       // APPROVE
-      const approveTx = await token.approve(LOTTERY_ADDRESS, totalCostWei);
-      await approveTx.wait();
-      console.log("Approve OK");
+      const tx1 = await token.approve(LOTTERY_ADDRESS, totalWei);
+      await tx1.wait();
 
-      // ENTER
-      setTxStatus("Participation à la loterie…");
+      setTransactionStatus("Achat du ticket…");
 
-      const enterTx = await contract.enter(tickets);
-      await enterTx.wait();
+      // ENTER avec quantité
+      const tx2 = await contract.enter(tickets);
+      await tx2.wait();
 
-      setTxStatus("Achat confirmé ! 🍀");
-    } catch (err: any) {
-      console.error("❌ BUY ERROR:", err);
-      setTxStatus("Échec ou refus de la transaction.");
+      // ---------- TIRAGE AUTO ----------
+      if (futureTotal >= 100) {
+        setTransactionStatus("Tirage du gagnant…");
+
+        const tx3 = await contract.pickWinner();
+        const receipt = await tx3.wait();
+
+        // Extraction event WinnerPicked
+        const event = receipt.logs
+          .map((log: any) => {
+            try {
+              return contract.interface.parseLog(log);
+            } catch {
+              return null;
+            }
+          })
+          .find((e: any) => e && e.name === "WinnerPicked");
+
+        if (event) {
+          const winnerAddress = event.args.winner;
+
+          console.log("🎉 Gagnant tiré =", winnerAddress);
+
+          // Suspense 3 sec
+          setTimeout(() => {
+            setWinnerPopup(winnerAddress);
+          }, 3000);
+        }
+
+        setTransactionStatus("🎉 Gagnant tiré automatiquement !");
+      } else {
+        setTransactionStatus("Achat confirmé ! Bonne chance 🍀");
+      }
+
+      setConfirmBeforeTx(false);
+    } catch (e: any) {
+      console.error("❌ BUY ERROR:", e);
+      setTransactionStatus("Transaction refusée ou échouée.");
+      setConfirmBeforeTx(false);
     }
   };
 
@@ -113,7 +165,7 @@ export default function Participation() {
             className="text-3xl font-bold text-center mb-6"
             style={{ color: "#c0c9db" }}
           >
-            Participer à EtherLuck
+            Participer à la loterie EtherLuck
           </h1>
 
           {account && (
@@ -151,27 +203,59 @@ export default function Participation() {
           </div>
 
           <div className="space-y-1 text-center text-sm" style={{ color: "#c0c9db" }}>
-            <p>Prix par ticket : <span className="font-bold">{price} ELK</span></p>
-            <p>Total : <span className="font-bold">{tickets * price} ELK</span></p>
+            <p>Prix par ticket : <span className="font-bold">{pricePerTicket} ELK</span></p>
+            <p>Total : <span className="font-bold">{tickets * pricePerTicket} ELK</span></p>
           </div>
 
-          <Button
-            onClick={buy}
-            className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
-            style={{
-              backgroundColor: "#7e52a0",
-              color: "white",
-            }}
-          >
-            Acheter mes tickets
-          </Button>
+          {!confirmBeforeTx ? (
+            <Button
+              onClick={requestConfirmation}
+              className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
+              style={{
+                backgroundColor: "#7e52a0",
+                color: "white",
+              }}
+            >
+              Acheter mes tickets
+            </Button>
+          ) : (
+            <div className="space-y-3">
 
-          {txStatus && (
+              <div
+                className="p-3 rounded-lg text-sm"
+                style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}
+              >
+                MetaMask va demander :
+                <br />– Approver vos tokens ELK  
+                <br />– Confirmer la participation ensuite
+                <br /><br />
+                C’est normal et sécurisé.
+              </div>
+
+              <Button
+                onClick={confirmAndBuy}
+                className="w-full py-3 text-lg rounded-xl font-semibold"
+                style={{ backgroundColor: "#d2a941", color: "#391b49" }}
+              >
+                Continuer
+              </Button>
+
+              <Button
+                onClick={() => setConfirmBeforeTx(false)}
+                className="w-full py-3 text-lg rounded-xl font-semibold"
+                style={{ backgroundColor: "#7e52a0", color: "white" }}
+              >
+                Annuler
+              </Button>
+            </div>
+          )}
+
+          {transactionStatus && (
             <div
               className="text-center font-medium mt-4 p-2 rounded-lg"
               style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}
             >
-              {txStatus}
+              {transactionStatus}
             </div>
           )}
 
@@ -184,9 +268,37 @@ export default function Participation() {
               ← Retour à l’accueil
             </a>
           </div>
-
         </CardContent>
       </Card>
+
+      {/* POP-UP GAGNANT */}
+      {winnerPopup && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 z-50"
+          onClick={() => setWinnerPopup(null)}
+        >
+          <div
+            className="p-6 rounded-2xl shadow-2xl text-center"
+            style={{ backgroundColor: "#391b49", border: "2px solid #d2a941" }}
+          >
+            <h2 className="text-3xl font-bold mb-4" style={{ color: "#f0dc92" }}>
+              🎉 Gagnant du tirage !
+            </h2>
+
+            <p className="text-lg mb-6" style={{ color: "#d2a941" }}>
+              {winnerPopup.substring(0, 6)}...{winnerPopup.slice(-4)}
+            </p>
+
+            <Button
+              onClick={() => setWinnerPopup(null)}
+              style={{ backgroundColor: "#d2a941", color: "#391b49" }}
+            >
+              Fermer
+            </Button>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
