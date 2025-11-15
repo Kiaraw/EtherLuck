@@ -14,143 +14,90 @@ import {
 export default function Participation() {
   const [account, setAccount] = useState("");
   const [tickets, setTickets] = useState(1);
-  const [pricePerTicket, setPricePerTicket] = useState(1);
-  const [transactionStatus, setTransactionStatus] = useState("");
-  const [confirmBeforeTx, setConfirmBeforeTx] = useState(false);
+  const [price, setPrice] = useState(1);
+  const [txStatus, setTxStatus] = useState("");
 
   const [contract, setContract] = useState<any>(null);
   const [token, setToken] = useState<any>(null);
 
   useEffect(() => {
-    initBlockchain();
+    init();
   }, []);
 
-  // ---------------------------------------------------
-  // INIT BLOCKCHAIN — version stable et corrigée
-  // ---------------------------------------------------
-  const initBlockchain = async () => {
+  const init = async () => {
     try {
       console.log("----- INIT Participation -----");
 
-      // 1) Provider HARDHAT local (read-only)
+      // Provider Hardhat
       const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 
-      // 2) Vérification du contrat
+      console.log("STEP: Vérification du contrat…");
       const code = await provider.getCode(LOTTERY_ADDRESS);
       if (code === "0x") {
-        console.error("❌ Aucun contrat à cette adresse !");
+        console.error("❌ Aucun contrat trouvé à LOTTERY_ADDRESS");
+        return;
       }
 
-      // 3) Instance READ
+      // Contrat lecture
       const contractRead = new ethers.Contract(
         LOTTERY_ADDRESS,
         LOTTERY_ABI,
         provider
       );
 
-      // 4) Prix ticket
-      const priceWei = await contractRead.ticketPrice();
-      const formatted = Number(ethers.formatEther(priceWei));
-      setPricePerTicket(formatted);
+      const rawPrice = await contractRead.ticketPrice();
+      setPrice(Number(ethers.formatEther(rawPrice)));
 
-      // 5) Préparation MetaMask
+      // Wallet Metamask
       if (window.ethereum) {
-        console.log("STEP: Vérification du réseau MetaMask");
+        console.log("STEP: Connexion Metamask…");
 
-        let chainId = await window.ethereum.request({
-          method: "eth_chainId",
-        });
+        const browser = new ethers.BrowserProvider(window.ethereum);
+        const signer = await browser.getSigner();
+        const addr = await signer.getAddress();
 
-        console.log("MetaMask chain BEFORE =", chainId);
+        setAccount(addr);
 
-        // Si MetaMask est encore sur Mainnet ⇒ on switch
-        if (chainId !== "0x7a69") {
-          console.log("➡ Changement de réseau vers Hardhat (0x7a69)...");
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: "0x7a69" }],
-            });
-          } catch (switchError: any) {
-            // Réseau non ajouté
-            if (switchError.code === 4902) {
-              console.log("➡ Ajout et switch vers Hardhat…");
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [
-                  {
-                    chainId: "0x7a69",
-                    chainName: "Hardhat Local",
-                    rpcUrls: ["http://127.0.0.1:8545"],
-                    nativeCurrency: {
-                      name: "ETH",
-                      symbol: "ETH",
-                      decimals: 18,
-                    },
-                  },
-                ],
-              });
-            }
-          }
-        }
-
-        // REFRESH du provider MetaMask
-        chainId = await window.ethereum.request({ method: "eth_chainId" });
-        console.log("MetaMask chain AFTER =", chainId);
-
-        const browserProvider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await browserProvider.getSigner();
-        const signerAddress = await signer.getAddress();
-        setAccount(signerAddress);
-
-        // Instances WRITE
+        // Contrats écriture
         setContract(
           new ethers.Contract(LOTTERY_ADDRESS, LOTTERY_ABI, signer)
         );
-        setToken(new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer));
+        setToken(
+          new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer)
+        );
       }
-    } catch (e) {
-      console.error("❌ INIT ERROR:", e);
+    } catch (err) {
+      console.error("❌ INIT ERROR:", err);
     }
   };
 
-  // ---------------------------------------------------
-  // CONFIRMATION AVANT TRANSACTION
-  // ---------------------------------------------------
-  const requestConfirmation = () => {
-    setConfirmBeforeTx(true);
-  };
-
-  // ---------------------------------------------------
-  // APPROVE + ENTER — FIXÉ
-  // ---------------------------------------------------
-  const confirmAndBuy = async () => {
+  const buy = async () => {
     try {
-      const priceWei = ethers.parseEther(pricePerTicket.toString());
-      const totalWei = priceWei * BigInt(tickets);
+      if (!contract || !token) return;
 
-      setTransactionStatus("Approbation des tokens (approve)…");
+      console.log("----- BUY START -----");
+      setTxStatus("Approbation des tokens…");
 
-      const tx1 = await token.approve(LOTTERY_ADDRESS, totalWei);
-      await tx1.wait();
+      const totalCostWei = ethers.parseEther((price * tickets).toString());
 
-      setTransactionStatus("Achat du ticket…");
+      // APPROVE
+      const approveTx = await token.approve(LOTTERY_ADDRESS, totalCostWei);
+      await approveTx.wait();
+      console.log("Approve OK");
 
-      const tx2 = await contract.enter();
-      await tx2.wait();
+      // ENTER
+      setTxStatus("Participation à la loterie…");
 
-      setTransactionStatus("Achat confirmé ! Bonne chance 🍀");
-      setConfirmBeforeTx(false);
-    } catch (e: any) {
-      console.error("❌ BUY ERROR:", e);
-      setTransactionStatus("Transaction refusée ou échouée.");
-      setConfirmBeforeTx(false);
+      const enterTx = await contract.enter(tickets);
+      await enterTx.wait();
+
+      setTxStatus("Achat confirmé ! 🍀");
+    } catch (err: any) {
+      console.error("❌ BUY ERROR:", err);
+      setTxStatus("Échec ou refus de la transaction.");
     }
   };
 
-  // ---------------------------------------------------
-  // UI — inchangé
-  // ---------------------------------------------------
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center p-6"
@@ -161,11 +108,12 @@ export default function Participation() {
         style={{ backgroundColor: "#391b49", borderColor: "#8e99ac" }}
       >
         <CardContent className="p-8 space-y-6">
+
           <h1
             className="text-3xl font-bold text-center mb-6"
             style={{ color: "#c0c9db" }}
           >
-            Participer à la loterie EtherLuck
+            Participer à EtherLuck
           </h1>
 
           {account && (
@@ -176,8 +124,7 @@ export default function Participation() {
                 backgroundColor: "#3b3e48",
               }}
             >
-              Connecté : {account.substring(0, 6)}...
-              {account.slice(-4)}
+              Connecté : {account.substring(0, 6)}...{account.slice(-4)}
             </div>
           )}
 
@@ -203,74 +150,28 @@ export default function Participation() {
             />
           </div>
 
-          <div
-            className="space-y-1 text-center text-sm"
-            style={{ color: "#c0c9db" }}
-          >
-            <p>
-              Prix par ticket :{" "}
-              <span className="font-bold">{pricePerTicket} ELK</span>
-            </p>
-            <p>
-              Total :{" "}
-              <span className="font-bold">
-                {tickets * pricePerTicket} ELK
-              </span>
-            </p>
+          <div className="space-y-1 text-center text-sm" style={{ color: "#c0c9db" }}>
+            <p>Prix par ticket : <span className="font-bold">{price} ELK</span></p>
+            <p>Total : <span className="font-bold">{tickets * price} ELK</span></p>
           </div>
 
-          {!confirmBeforeTx ? (
-            <Button
-              onClick={requestConfirmation}
-              className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
-              style={{
-                backgroundColor: "#7e52a0",
-                color: "white",
-              }}
-            >
-              Acheter mes tickets
-            </Button>
-          ) : (
-            <div className="space-y-3">
-              <div
-                className="p-3 rounded-lg text-sm"
-                style={{
-                  backgroundColor: "#3b3e48",
-                  color: "#f0dc92",
-                }}
-              >
-                MetaMask va demander :
-                <br />– d’approuver vos tokens ELK
-                <br />– puis de confirmer la participation
-                <br />
-                <br />
-                C’est normal et sécurisé.
-              </div>
+          <Button
+            onClick={buy}
+            className="w-full text-lg py-3 rounded-xl font-semibold transition-all duration-200"
+            style={{
+              backgroundColor: "#7e52a0",
+              color: "white",
+            }}
+          >
+            Acheter mes tickets
+          </Button>
 
-              <Button
-                onClick={confirmAndBuy}
-                className="w-full py-3 text-lg rounded-xl font-semibold"
-                style={{ backgroundColor: "#d2a941", color: "#391b49" }}
-              >
-                Continuer
-              </Button>
-
-              <Button
-                onClick={() => setConfirmBeforeTx(false)}
-                className="w-full py-3 text-lg rounded-xl font-semibold"
-                style={{ backgroundColor: "#7e52a0", color: "white" }}
-              >
-                Annuler
-              </Button>
-            </div>
-          )}
-
-          {transactionStatus && (
+          {txStatus && (
             <div
               className="text-center font-medium mt-4 p-2 rounded-lg"
               style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}
             >
-              {transactionStatus}
+              {txStatus}
             </div>
           )}
 
@@ -283,6 +184,7 @@ export default function Participation() {
               ← Retour à l’accueil
             </a>
           </div>
+
         </CardContent>
       </Card>
     </main>

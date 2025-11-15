@@ -1,51 +1,44 @@
 // backend/deploy.cjs
 const hre = require("hardhat");
 const fs = require("fs");
-const path = require("path");
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log(`🚀 Deploying with: ${deployer.address}`);
 
-  // 1 — Token
-  const LuckToken = await hre.ethers.getContractFactory("LuckToken");
-  const token = await LuckToken.deploy(
-    hre.ethers.utils.parseEther("1000000") // V5 FIX
-  );
+  // 1️⃣ Déploiement du token
+  const initialSupply = ethers.utils.parseEther("1000000");
+  const LuckToken = await ethers.getContractFactory("LuckToken");
+  const token = await LuckToken.deploy(initialSupply);
   await token.deployed();
-  const TOKEN_ADDRESS = token.address;
-  console.log(`✅ LuckToken deployed at: ${TOKEN_ADDRESS}`);
+  console.log(`✅ LuckToken deployed at: ${token.address}`);
 
-  // 2 — Lottery
-  const Lottery = await hre.ethers.getContractFactory("Lottery");
+  // 2️⃣ Déploiement de la loterie (2 arguments obligatoires)
+  const Lottery = await ethers.getContractFactory("EtherLuckLottery");
+
+
   const lottery = await Lottery.deploy(
-    TOKEN_ADDRESS,
-    hre.ethers.utils.parseEther("1") // V5 FIX
+    token.address,                     // 1️⃣ address du token
+    ethers.utils.parseEther("1")       // 2️⃣ prix du ticket en ELK
   );
   await lottery.deployed();
-  const LOTTERY_ADDRESS = lottery.address;
-  console.log(`🎰 Lottery deployed at: ${LOTTERY_ADDRESS}`);
+  console.log(`🎰 Lottery deployed at: ${lottery.address}`);
 
-  // 3 — ABIs
-  const lotteryArtifact = await hre.artifacts.readArtifact("Lottery");
-  const tokenArtifact   = await hre.artifacts.readArtifact("LuckToken");
-
-  // 4 — Write to front
-  const FRONT_PATH = path.join(
-    __dirname,
-    "../frontend/src/constants.ts" // ⚠️ mets ton vrai chemin
-  );
-
+  // 3️⃣ Mise à jour du front
   const content = `
-export const LOTTERY_ADDRESS = "${LOTTERY_ADDRESS}";
-export const TOKEN_ADDRESS   = "${TOKEN_ADDRESS}";
+export const TOKEN_ADDRESS = "${token.address}";
+export const LOTTERY_ADDRESS = "${lottery.address}";
 
-export const LOTTERY_ABI = ${JSON.stringify(lotteryArtifact.abi, null, 2)} as const;
-export const TOKEN_ABI   = ${JSON.stringify(tokenArtifact.abi, null, 2)} as const;
+export const LOTTERY_ABI = ${Lottery.interface.format(
+    ethers.utils.FormatTypes.json
+  )};
+export const TOKEN_ABI = ${LuckToken.interface.format(
+    ethers.utils.FormatTypes.json
+  )};
 `;
 
-  fs.writeFileSync(FRONT_PATH, content);
-  console.log("📦 constants.ts updated successfully!");
+  fs.writeFileSync("../frontend/src/constants.ts", content);
+  console.log("💾 ABI + addresses updated");
 }
 
 main().catch((err) => {

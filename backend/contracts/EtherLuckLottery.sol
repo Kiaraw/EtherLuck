@@ -3,17 +3,18 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Lottery {
+contract EtherLuckLottery {
     IERC20 public immutable token;
     address public immutable manager;
 
-    uint256 public ticketPrice;      // prix d'1 ticket en ELK (en wei)
-    uint256 public round;            // numéro de la loterie en cours
+    uint256 public ticketPrice;          // prix d'1 ticket en ELK (wei)
+    uint256 public round;                // round courant (1, 2, 3, ...)
+    uint256 public totalTicketsSold;     // nb total de tickets vendus pour le round courant
 
-    // round => liste des joueurs de ce round
+    // round => liste des "slots" de joueurs (1 entrée = 1 ticket)
     mapping(uint256 => address[]) private playersByRound;
 
-    // round => joueur => nombre de tickets achetés
+    // round => joueur => nb de tickets achetés sur ce round
     mapping(uint256 => mapping(address => uint256)) public ticketsBoughtByRound;
 
     event TicketPurchased(
@@ -43,33 +44,56 @@ contract Lottery {
         _;
     }
 
-    // Liste des joueurs pour un round donné (pour debug / stats)
+    // -----------------------------
+    // VUES POUR LE FRONT
+    // -----------------------------
+
+    // Liste des joueurs pour un round donné (debug / stats)
     function getPlayers(uint256 r) external view returns (address[] memory) {
         return playersByRound[r];
     }
 
-    // Achat d'UN ticket (ton front multiplie le nombre d'achats via plusieurs calls si besoin)
-    function enter() external {
-        require(ticketPrice > 0, "Ticket price not set");
-
-        // Transfer ELK du joueur vers le contrat
-        bool ok = token.transferFrom(msg.sender, address(this), ticketPrice);
-        require(ok, "Token transfer failed");
-
-        // On enregistre le joueur et le ticket
-        playersByRound[round].push(msg.sender);
-        ticketsBoughtByRound[round][msg.sender] += 1;
-
-        emit TicketPurchased(msg.sender, round, 1);
+    // 🔹 Utilisé par ta page "Cagnotte" : tickets de l'utilisateur sur le round courant
+    function ticketsBought(address user) external view returns (uint256) {
+        return ticketsBoughtByRound[round][user];
     }
 
-    // Admin : changer le prix du ticket si besoin
+    // -----------------------------
+    // LOGIQUE D'ACHAT
+    // -----------------------------
+
+    // Achat de N tickets en une fois
+    function enter(uint256 numberOfTickets) external {
+        require(ticketPrice > 0, "Ticket price not set");
+        require(numberOfTickets > 0, "Invalid ticket count");
+
+        uint256 totalCost = ticketPrice * numberOfTickets;
+
+        // Paiement en tokens ELK
+        bool ok = token.transferFrom(msg.sender, address(this), totalCost);
+        require(ok, "Token transfer failed");
+
+        // On ajoute 1 "slot" par ticket pour que le tirage soit pondéré
+        for (uint256 i = 0; i < numberOfTickets; i++) {
+            playersByRound[round].push(msg.sender);
+        }
+
+        // Comptage des tickets par joueur + global
+        ticketsBoughtByRound[round][msg.sender] += numberOfTickets;
+        totalTicketsSold += numberOfTickets;
+
+        emit TicketPurchased(msg.sender, round, numberOfTickets);
+    }
+
+    // Admin : changer le prix du ticket
     function setTicketPrice(uint256 newPrice) external onlyManager {
         require(newPrice > 0, "Price must be > 0");
         ticketPrice = newPrice;
     }
 
-    // Admin : tirer un gagnant et lui envoyer toute la cagnotte
+    // -----------------------------
+    // TIRAGE DU GAGNANT
+    // -----------------------------
     function pickWinner() external onlyManager {
         address[] storage players = playersByRound[round];
         uint256 numPlayers = players.length;
@@ -78,7 +102,7 @@ contract Lottery {
         uint256 prize = token.balanceOf(address(this));
         require(prize > 0, "No prize");
 
-        // RNG débile mais suffisant pour projet scolaire / local
+        // RNG ultra basique (ok pour projet scolaire / local)
         uint256 random = uint256(
             keccak256(
                 abi.encodePacked(
@@ -98,8 +122,13 @@ contract Lottery {
 
         emit WinnerPicked(winner, round, prize);
 
-        // On passe au round suivant, on efface les joueurs du round précédent
+        // Reset du round courant
         delete playersByRound[round];
+        totalTicketsSold = 0; // on remet le compteur de tickets à zéro
+
+        // ⚠️ On ne nettoie pas ticketsBoughtByRound[round] pour tous les joueurs
+        // (trop cher en gas), mais ce n'est pas grave car on change de "round"
+        // et toutes les lectures passent automatiquement sur le nouveau round.
         round += 1;
     }
 }
