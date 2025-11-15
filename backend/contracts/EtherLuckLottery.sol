@@ -1,143 +1,105 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IERC20 {
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-    function transfer(address to, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-
-contract EtherLuckToken is IERC20 {
-    string public name = "EtherLuck";
-    string public symbol = "ELUCK";
-    uint8 public decimals = 18;
-
-    uint256 private _totalSupply;
-    mapping(address => uint256) private _balances;
-    mapping(address => mapping(address => uint256)) private _allowances;
-
-    constructor(uint256 initialSupply) {
-        _mint(msg.sender, initialSupply);
-    }
-
-    function totalSupply() external view override returns (uint256) {
-        return _totalSupply;
-    }
-
-    function balanceOf(address account) external view override returns (uint256) {
-        return _balances[account];
-    }
-
-    function transfer(address to, uint256 amount) external override returns (bool) {
-        require(to != address(0), "ERC20: transfer to zero");
-        require(_balances[msg.sender] >= amount, "ERC20: balance too low");
-        _balances[msg.sender] -= amount;
-        _balances[to] += amount;
-        emit Transfer(msg.sender, to, amount);
-        return true;
-    }
-
-    function allowance(address owner, address spender) external view override returns (uint256) {
-        return _allowances[owner][spender];
-    }
-
-    function approve(address spender, uint256 amount) external override returns (bool) {
-        _allowances[msg.sender][spender] = amount;
-        emit Approval(msg.sender, spender, amount);
-        return true;
-    }
-
-    function transferFrom(address from, address to, uint256 amount) external override returns (bool) {
-        require(to != address(0), "ERC20: transfer to zero");
-        require(_balances[from] >= amount, "ERC20: balance too low");
-        require(_allowances[from][msg.sender] >= amount, "ERC20: allowance too low");
-        _allowances[from][msg.sender] -= amount;
-        _balances[from] -= amount;
-        _balances[to] += amount;
-        emit Transfer(from, to, amount);
-        return true;
-    }
-
-    function _mint(address account, uint256 amount) internal {
-        require(account != address(0), "ERC20: mint to zero");
-        _totalSupply += amount;
-        _balances[account] += amount;
-        emit Transfer(address(0), account, amount);
-    }
-}
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Lottery {
-    IERC20 public token;
-    address public manager;
-    uint256 public ticketPrice;
-    address payable[] public players;
-    uint256 public round;
+    IERC20 public immutable token;
+    address public immutable manager;
 
-    event TicketPurchased(address indexed buyer, uint256 round, uint256 amount);
-    event WinnerPicked(address indexed winner, uint256 round, uint256 prize);
+    uint256 public ticketPrice;      // prix d'1 ticket en ELK (en wei)
+    uint256 public round;            // numéro de la loterie en cours
 
-    modifier onlyManager() {
-        require(msg.sender == manager, "Only manager");
-        _;
-    }
+    // round => liste des joueurs de ce round
+    mapping(uint256 => address[]) private playersByRound;
+
+    // round => joueur => nombre de tickets achetés
+    mapping(uint256 => mapping(address => uint256)) public ticketsBoughtByRound;
+
+    event TicketPurchased(
+        address indexed buyer,
+        uint256 indexed round,
+        uint256 amount
+    );
+
+    event WinnerPicked(
+        address indexed winner,
+        uint256 indexed round,
+        uint256 prize
+    );
 
     constructor(address tokenAddress, uint256 initialTicketPrice) {
-        require(tokenAddress != address(0), "Token address zero");
+        require(tokenAddress != address(0), "Invalid token");
+        require(initialTicketPrice > 0, "Ticket price must be > 0");
+
         token = IERC20(tokenAddress);
         manager = msg.sender;
         ticketPrice = initialTicketPrice;
         round = 1;
     }
 
-    // ------------------------------------------------------------
-    // Internal function: selection du gagnant (méthode non modifiée)
-    // ------------------------------------------------------------
-    function _pickWinnerInternal() internal {
-        require(players.length > 0, "No players");
+    modifier onlyManager() {
+        require(msg.sender == manager, "Only manager");
+        _;
+    }
 
-        uint256 index = uint256(
-            keccak256(abi.encodePacked(block.timestamp, block.prevrandao))
-        ) % players.length;
+    // Liste des joueurs pour un round donné (pour debug / stats)
+    function getPlayers(uint256 r) external view returns (address[] memory) {
+        return playersByRound[r];
+    }
 
-        address payable winner = players[index];
+    // Achat d'UN ticket (ton front multiplie le nombre d'achats via plusieurs calls si besoin)
+    function enter() external {
+        require(ticketPrice > 0, "Ticket price not set");
+
+        // Transfer ELK du joueur vers le contrat
+        bool ok = token.transferFrom(msg.sender, address(this), ticketPrice);
+        require(ok, "Token transfer failed");
+
+        // On enregistre le joueur et le ticket
+        playersByRound[round].push(msg.sender);
+        ticketsBoughtByRound[round][msg.sender] += 1;
+
+        emit TicketPurchased(msg.sender, round, 1);
+    }
+
+    // Admin : changer le prix du ticket si besoin
+    function setTicketPrice(uint256 newPrice) external onlyManager {
+        require(newPrice > 0, "Price must be > 0");
+        ticketPrice = newPrice;
+    }
+
+    // Admin : tirer un gagnant et lui envoyer toute la cagnotte
+    function pickWinner() external onlyManager {
+        address[] storage players = playersByRound[round];
+        uint256 numPlayers = players.length;
+        require(numPlayers > 0, "No players");
+
         uint256 prize = token.balanceOf(address(this));
+        require(prize > 0, "No prize");
 
-        require(token.transfer(winner, prize), "Prize transfer failed");
+        // RNG débile mais suffisant pour projet scolaire / local
+        uint256 random = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp,
+                    block.prevrandao,
+                    numPlayers,
+                    prize
+                )
+            )
+        );
+
+        uint256 winnerIndex = random % numPlayers;
+        address winner = players[winnerIndex];
+
+        bool ok = token.transfer(winner, prize);
+        require(ok, "Prize transfer failed");
 
         emit WinnerPicked(winner, round, prize);
 
-        delete players;
-        round++;
-    }
-
-    // ------------------------------------------------------------
-    // Tirage manuel par le manager (identique à avant)
-    // ------------------------------------------------------------
-    function pickWinner() external onlyManager {
-        _pickWinnerInternal();
-    }
-
-    // ------------------------------------------------------------
-    // Entrée dans la loterie
-    // + tirage automatique lorsque 3 joueurs
-    // ------------------------------------------------------------
-    function enter() external {
-        require(
-            token.transferFrom(msg.sender, address(this), ticketPrice),
-            "Token transfer failed"
-        );
-
-        players.push(payable(msg.sender));
-        emit TicketPurchased(msg.sender, round, ticketPrice);
-
-        // 🎯 Tirage automatique quand il y a 3 joueurs
-        if (players.length == 3) {
-            _pickWinnerInternal();
-        }
+        // On passe au round suivant, on efface les joueurs du round précédent
+        delete playersByRound[round];
+        round += 1;
     }
 }

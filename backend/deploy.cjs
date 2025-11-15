@@ -1,45 +1,54 @@
-// deploy.cjs
-const { ethers } = require("hardhat");
+// backend/deploy.cjs
+const hre = require("hardhat");
 const fs = require("fs");
+const path = require("path");
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  console.log(`🚀 Deploying contracts with: ${deployer.address}`);
+  const [deployer] = await hre.ethers.getSigners();
+  console.log(`🚀 Deploying with: ${deployer.address}`);
 
-  // 1️⃣ Déploiement du token
-  const initialSupply = ethers.utils.parseEther("1000000"); // 1 million de tokens
-  const LuckToken = await ethers.getContractFactory("LuckToken");
-  const luckToken = await LuckToken.deploy(initialSupply);
-  await luckToken.deployed();
-  console.log(`✅ LuckToken deployed to: ${luckToken.address}`);
+  // 1 — Token
+  const LuckToken = await hre.ethers.getContractFactory("LuckToken");
+  const token = await LuckToken.deploy(
+    hre.ethers.utils.parseEther("1000000") // V5 FIX
+  );
+  await token.deployed();
+  const TOKEN_ADDRESS = token.address;
+  console.log(`✅ LuckToken deployed at: ${TOKEN_ADDRESS}`);
 
-  // 2️⃣ Déploiement de la loterie
-  const Lottery = await ethers.getContractFactory("Lottery");
+  // 2 — Lottery
+  const Lottery = await hre.ethers.getContractFactory("Lottery");
   const lottery = await Lottery.deploy(
-    luckToken.address,
-    ethers.utils.parseEther("1")
+    TOKEN_ADDRESS,
+    hre.ethers.utils.parseEther("1") // V5 FIX
   );
   await lottery.deployed();
-  console.log(`🎲 Lottery deployed to: ${lottery.address}`);
+  const LOTTERY_ADDRESS = lottery.address;
+  console.log(`🎰 Lottery deployed at: ${LOTTERY_ADDRESS}`);
 
-  // 3️⃣ Récupération de l'ABI au BON format (objet JSON propre)
-  const abiJsonString = Lottery.interface.format(ethers.utils.FormatTypes.json);
-  const abiArray = JSON.parse(abiJsonString); // Convertit la string JSON → tableau JS
+  // 3 — ABIs
+  const lotteryArtifact = await hre.artifacts.readArtifact("Lottery");
+  const tokenArtifact   = await hre.artifacts.readArtifact("LuckToken");
 
-  // 4️⃣ Mise à jour automatique du front (constants.ts)
-  const content = `export const LOTTERY_ADDRESS = "${lottery.address}";
-export const TOKEN_ADDRESS = "${luckToken.address}";
+  // 4 — Write to front
+  const FRONT_PATH = path.join(
+    __dirname,
+    "../frontend/src/constants.ts" // ⚠️ mets ton vrai chemin
+  );
 
-export const LOTTERY_ABI = ${JSON.stringify(abiArray, null, 2)} as const;
+  const content = `
+export const LOTTERY_ADDRESS = "${LOTTERY_ADDRESS}";
+export const TOKEN_ADDRESS   = "${TOKEN_ADDRESS}";
+
+export const LOTTERY_ABI = ${JSON.stringify(lotteryArtifact.abi, null, 2)} as const;
+export const TOKEN_ABI   = ${JSON.stringify(tokenArtifact.abi, null, 2)} as const;
 `;
 
-  fs.writeFileSync("./lottery-frontend/src/constants.ts", content);
-
-  console.log("💾 Adresses et ABI mises à jour dans lottery-frontend/src/constants.ts");
-  console.log("\n📜 Déploiement terminé avec succès !");
+  fs.writeFileSync(FRONT_PATH, content);
+  console.log("📦 constants.ts updated successfully!");
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((err) => {
+  console.error(err);
   process.exit(1);
 });
