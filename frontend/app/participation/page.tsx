@@ -25,57 +25,105 @@ export default function Participation() {
     initBlockchain();
   }, []);
 
+  // ---------------------------------------------------
+  // INIT BLOCKCHAIN — version stable et corrigée
+  // ---------------------------------------------------
   const initBlockchain = async () => {
     try {
       console.log("----- INIT Participation -----");
 
+      // 1) Provider HARDHAT local (read-only)
       const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
 
+      // 2) Vérification du contrat
       const code = await provider.getCode(LOTTERY_ADDRESS);
       if (code === "0x") {
-        console.error("❌ Aucun contrat à cette adresse");
+        console.error("❌ Aucun contrat à cette adresse !");
       }
 
+      // 3) Instance READ
       const contractRead = new ethers.Contract(
         LOTTERY_ADDRESS,
         LOTTERY_ABI,
         provider
       );
 
+      // 4) Prix ticket
       const priceWei = await contractRead.ticketPrice();
       const formatted = Number(ethers.formatEther(priceWei));
       setPricePerTicket(formatted);
 
+      // 5) Préparation MetaMask
       if (window.ethereum) {
+        console.log("STEP: Vérification du réseau MetaMask");
+
+        let chainId = await window.ethereum.request({
+          method: "eth_chainId",
+        });
+
+        console.log("MetaMask chain BEFORE =", chainId);
+
+        // Si MetaMask est encore sur Mainnet ⇒ on switch
+        if (chainId !== "0x7a69") {
+          console.log("➡ Changement de réseau vers Hardhat (0x7a69)...");
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0x7a69" }],
+            });
+          } catch (switchError: any) {
+            // Réseau non ajouté
+            if (switchError.code === 4902) {
+              console.log("➡ Ajout et switch vers Hardhat…");
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: "0x7a69",
+                    chainName: "Hardhat Local",
+                    rpcUrls: ["http://127.0.0.1:8545"],
+                    nativeCurrency: {
+                      name: "ETH",
+                      symbol: "ETH",
+                      decimals: 18,
+                    },
+                  },
+                ],
+              });
+            }
+          }
+        }
+
+        // REFRESH du provider MetaMask
+        chainId = await window.ethereum.request({ method: "eth_chainId" });
+        console.log("MetaMask chain AFTER =", chainId);
+
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
         const signer = await browserProvider.getSigner();
         const signerAddress = await signer.getAddress();
         setAccount(signerAddress);
 
-        const contractWrite = new ethers.Contract(
-          LOTTERY_ADDRESS,
-          LOTTERY_ABI,
-          signer
+        // Instances WRITE
+        setContract(
+          new ethers.Contract(LOTTERY_ADDRESS, LOTTERY_ABI, signer)
         );
-
-        const tokenWrite = new ethers.Contract(
-          TOKEN_ADDRESS,
-          TOKEN_ABI,
-          signer
-        );
-
-        setContract(contractWrite);
-        setToken(tokenWrite);
+        setToken(new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer));
       }
     } catch (e) {
       console.error("❌ INIT ERROR:", e);
     }
   };
 
+  // ---------------------------------------------------
+  // CONFIRMATION AVANT TRANSACTION
+  // ---------------------------------------------------
   const requestConfirmation = () => {
     setConfirmBeforeTx(true);
   };
 
+  // ---------------------------------------------------
+  // APPROVE + ENTER — FIXÉ
+  // ---------------------------------------------------
   const confirmAndBuy = async () => {
     try {
       const priceWei = ethers.parseEther(pricePerTicket.toString());
@@ -100,6 +148,9 @@ export default function Participation() {
     }
   };
 
+  // ---------------------------------------------------
+  // UI — inchangé
+  // ---------------------------------------------------
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center p-6"
@@ -110,7 +161,6 @@ export default function Participation() {
         style={{ backgroundColor: "#391b49", borderColor: "#8e99ac" }}
       >
         <CardContent className="p-8 space-y-6">
-
           <h1
             className="text-3xl font-bold text-center mb-6"
             style={{ color: "#c0c9db" }}
@@ -121,12 +171,13 @@ export default function Participation() {
           {account && (
             <div
               className="text-center text-sm py-2 rounded-lg"
-              style={{ 
+              style={{
                 color: "#d2a941",
                 backgroundColor: "#3b3e48",
               }}
             >
-              Connecté : {account.substring(0, 6)}...{account.slice(-4)}
+              Connecté : {account.substring(0, 6)}...
+              {account.slice(-4)}
             </div>
           )}
 
@@ -152,9 +203,20 @@ export default function Participation() {
             />
           </div>
 
-          <div className="space-y-1 text-center text-sm" style={{ color: "#c0c9db" }}>
-            <p>Prix par ticket : <span className="font-bold">{pricePerTicket} ELK</span></p>
-            <p>Total : <span className="font-bold">{tickets * pricePerTicket} ELK</span></p>
+          <div
+            className="space-y-1 text-center text-sm"
+            style={{ color: "#c0c9db" }}
+          >
+            <p>
+              Prix par ticket :{" "}
+              <span className="font-bold">{pricePerTicket} ELK</span>
+            </p>
+            <p>
+              Total :{" "}
+              <span className="font-bold">
+                {tickets * pricePerTicket} ELK
+              </span>
+            </p>
           </div>
 
           {!confirmBeforeTx ? (
@@ -170,15 +232,18 @@ export default function Participation() {
             </Button>
           ) : (
             <div className="space-y-3">
-
               <div
                 className="p-3 rounded-lg text-sm"
-                style={{ backgroundColor: "#3b3e48", color: "#f0dc92" }}
+                style={{
+                  backgroundColor: "#3b3e48",
+                  color: "#f0dc92",
+                }}
               >
                 MetaMask va demander :
-                <br />– Approver vos tokens ELK  
-                <br />– Confirmer la participation ensuite
-                <br /><br />
+                <br />– d’approuver vos tokens ELK
+                <br />– puis de confirmer la participation
+                <br />
+                <br />
                 C’est normal et sécurisé.
               </div>
 
@@ -218,7 +283,6 @@ export default function Participation() {
               ← Retour à l’accueil
             </a>
           </div>
-
         </CardContent>
       </Card>
     </main>
