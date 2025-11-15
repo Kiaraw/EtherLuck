@@ -32,7 +32,7 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
   };
 
   const handleMinor = () => {
-    // Pas de redirection obligatoire, juste dissuasion
+
     alert("Si tu as moins de 18 ans, tu n’es pas autorisé à utiliser EtherLuck.");
   };
 
@@ -53,13 +53,13 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
           </h1>
 
           <p className="text-sm leading-relaxed">
-            EtherLuck est une loterie expérimentale.  
+            EtherLuck est une loterie en ligne.  
             En continuant, tu confirmes :
             <br />
             <span className="font-semibold text-[#D2A941]">
               • Avoir au moins 18 ans  
               <br />
-              • Comprendre qu’il s’agit d’un jeu impliquant un jeton virtuel
+              • Comprendre qu’il s’agit d’un jeu impliquant des jetons virtuels
             </span>
           </p>
 
@@ -82,8 +82,7 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
           </div>
 
           <p className="text-xs mt-2 text-[#bbc4ca]">
-            Ce contrôle n’est pas une vérification d’identité réelle, mais une
-            déclaration sur l’honneur.
+            Ce contrôle est une déclaration sur l’honneur.
           </p>
         </div>
       </div>
